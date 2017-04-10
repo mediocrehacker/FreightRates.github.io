@@ -39,8 +39,8 @@ type Focused
 init : ( Model, Cmd Msg )
 init =
     ( { mdl = Material.model
-      , pol = SearchSeaPort.init
-      , pod = SearchSeaPort.init
+      , pol = SearchSeaPort.initLabel "Port of Loading"
+      , pod = SearchSeaPort.initLabel "Port of Discharge "
       , currentFocus = None
       }
     , Cmd.none
@@ -62,12 +62,16 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SearchPol autoMsg ->
-            ( { model
-                | pol = Tuple.first <| SearchSeaPort.update autoMsg model.pol
-                , currentFocus = Pol
-              }
-            , Cmd.none
-            )
+            let
+                _ =
+                    Debug.log "Pol: " model.pol
+            in
+                ( { model
+                    | pol = Tuple.first <| SearchSeaPort.update autoMsg model.pol
+                    , currentFocus = Pol
+                  }
+                , Cmd.none
+                )
 
         SearchPod autoMsg ->
             ( { model
@@ -111,7 +115,7 @@ viewMain model =
         ]
         [ Options.styled h1
             [ Color.text Color.primary ]
-            [ text "FreightRates" ]
+            [ text "Freight Rates" ]
         , Options.styled h3
             [ Typo.headline ]
             [ text "Search Best Freight Shipping Rates" ]
@@ -127,14 +131,17 @@ viewBody model =
         , Grid.cell [ Grid.size Grid.All 5 ]
             [ viewPod model.pod ]
         , Grid.cell [ Grid.size Grid.All 2 ]
-            [ Button.render Mdl
-                [ 0 ]
-                model.mdl
-                [ Button.raised
-                , Button.colored
-                , Button.ripple
+            [ div
+                [ style [ ( "padding", "10px 0" ) ] ]
+                [ Button.render Mdl
+                    [ 0 ]
+                    model.mdl
+                    [ Button.raised
+                    , Button.colored
+                    , Button.ripple
+                    ]
+                    [ text "Raised button" ]
                 ]
-                [ text "Raised button" ]
             ]
         ]
 

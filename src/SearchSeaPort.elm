@@ -36,12 +36,19 @@ type alias Model =
     , selectedSeaPort : Maybe SeaPort
     , showMenu : Bool
     , mdl : Material.Model
+    , label : String
     }
+
+
+initLabel : String -> Model
+initLabel label =
+    { init | label = label }
 
 
 init : Model
 init =
-    { seaPorts = presidents
+    { label = ""
+    , seaPorts = seaPorts
     , autoState = Autocomplete.empty
     , howManyToShow = 5
     , query = ""
@@ -68,7 +75,7 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
+    case Debug.log "Message" msg of
         Mdl msg_ ->
             Material.update Mdl msg_ model
 
@@ -282,7 +289,10 @@ view model =
                     [ Options.onInput SetQuery
                     , Options.onFocus OnFocus
                     , Options.onWithOptions "keydown" options dec
+                    , Options.css "width" "100%"
                     , Textfield.value query
+                    , Textfield.label model.label
+                    , Textfield.floatingLabel
                     , Options.dispatch Batch
                     , Options.attribute <| autocomplete False
                     , Options.attribute <| attribute "aria-owns" "list-of-seaports"
@@ -309,7 +319,19 @@ acceptableSeaPorts query seaPorts =
 
 viewMenu : Model -> Html Msg
 viewMenu model =
-    div [ class "autocomplete-menu" ]
+    div
+        [ class "autocomplete-menu"
+        , style
+            [ ( "position", "relative" )
+            , ( "margin-top", "-15px" )
+            , ( "background", "white" )
+            , ( "color", "black" )
+            , ( "border", "1px solid #DDD" )
+            , ( "border-radius", "3px" )
+            , ( "box-shadow", "0 0 5px rgba(0,0,0,0.1)" )
+            , ( "min-width", "120px" )
+            ]
+        ]
         [ Html.map SetAutoState (Autocomplete.view viewConfig model.howManyToShow model.autoState (acceptableSeaPorts model.query model.seaPorts)) ]
 
 
@@ -338,16 +360,38 @@ viewConfig : Autocomplete.ViewConfig SeaPort
 viewConfig =
     let
         customizedLi keySelected mouseSelected seaPort =
-            { attributes =
-                [ classList [ ( "autocomplete-item", True ), ( "key-selected", keySelected || mouseSelected ) ]
-                , id seaPort.name
-                ]
-            , children = [ Html.text seaPort.name ]
-            }
+            let
+                backgroundColor =
+                    if keySelected || mouseSelected then
+                        "#3366FF"
+                    else
+                        "#FFFFFF"
+            in
+                { attributes =
+                    [ classList [ ( "autocomplete-item", True ), ( "key-selected", keySelected || mouseSelected ) ]
+                    , id seaPort.name
+                    , style
+                        [ ( "display", "block" )
+                        , ( "padding", "5px 10px" )
+                        , ( "border-bottom", "1px solid #DDD" )
+                        , ( "cursor", "pointer" )
+                        , ( "background-color", backgroundColor )
+                        ]
+                    ]
+                , children = [ Html.text (seaPortToString seaPort) ]
+                }
     in
         Autocomplete.viewConfig
             { toId = .name
-            , ul = [ class "autocomplete-list" ]
+            , ul =
+                [ style
+                    [ ( "list-style", "none" )
+                    , ( "padding", "0" )
+                    , ( "margin", "auto" )
+                    , ( "max-height", "200px" )
+                    , ( "oveflow-y", "auto" )
+                    ]
+                ]
             , li = customizedLi
             }
 
@@ -363,11 +407,16 @@ type alias SeaPort =
     }
 
 
-presidents : List SeaPort
-presidents =
+seaPorts : List SeaPort
+seaPorts =
     [ SeaPort "RUVVO" "Vladivostok" "Russis"
     , SeaPort "CNSHA" "Shanghai" "China"
     , SeaPort "HKHKG" "Hong Kong" "Hong Kong"
     , SeaPort "CNSWA" "Shantou" "China"
     , SeaPort "CNDLC" "Dalian" "China"
     ]
+
+
+seaPortToString : SeaPort -> String
+seaPortToString seaPort =
+    seaPort.name ++ " , " ++ seaPort.country ++ " | " ++ seaPort.code
