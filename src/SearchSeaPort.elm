@@ -9,6 +9,9 @@ import Json.Decode as Json
 import Json.Encode as JE
 import Dom
 import Task
+import Material
+import Material.Textfield as Textfield
+import Material.Options as Options
 
 
 main =
@@ -32,6 +35,7 @@ type alias Model =
     , query : String
     , selectedSeaPort : Maybe SeaPort
     , showMenu : Bool
+    , mdl : Material.Model
     }
 
 
@@ -43,6 +47,7 @@ init =
     , query = ""
     , selectedSeaPort = Nothing
     , showMenu = False
+    , mdl = Material.model
     }
 
 
@@ -57,11 +62,33 @@ type Msg
     | PreviewSeaPort String
     | OnFocus
     | NoOp
+    | Mdl (Material.Msg Msg)
+    | Batch (List Msg)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        Mdl msg_ ->
+            Material.update Mdl msg_ model
+
+        Batch listOfMsg ->
+            let
+                ( finalModel, listOfFx ) =
+                    List.foldl
+                        (\msg ->
+                            \( mdl, fxList ) ->
+                                let
+                                    ( newModel, newFx ) =
+                                        update msg mdl
+                                in
+                                    ( newModel, fxList ++ [ newFx ] )
+                        )
+                        ( model, [] )
+                        listOfMsg
+            in
+                ( finalModel, Cmd.batch listOfFx )
+
         SetQuery newQuery ->
             let
                 showMenu =
@@ -149,7 +176,7 @@ update msg model =
                     setQuery model id
                         |> resetMenu
             in
-                ( newModel, Task.attempt (\_ -> NoOp) (Dom.focus "president-input") )
+                ( newModel, Task.attempt (\_ -> NoOp) (Dom.focus "seaport-input") )
 
         PreviewSeaPort id ->
             { model | selectedSeaPort = Just <| getSeaPortAtId model.seaPorts id } ! []
@@ -248,22 +275,23 @@ view model =
     in
         div []
             (List.append
-                [ input
-                    (activeDescendant
-                        [ onInput SetQuery
-                        , onFocus OnFocus
-                        , onWithOptions "keydown" options dec
-                        , value query
-                        , id "president-input"
-                        , class "autocomplete-input"
-                        , autocomplete False
-                        , attribute "aria-owns" "list-of-presidents"
-                        , attribute "aria-expanded" <| String.toLower <| toString model.showMenu
-                        , attribute "aria-haspopup" <| String.toLower <| toString model.showMenu
-                        , attribute "role" "combobox"
-                        , attribute "aria-autocomplete" "list"
-                        ]
-                    )
+                [ Textfield.render Mdl
+                    [ 0 ]
+                    model.mdl
+                    -- (activeDescendant
+                    [ Options.onInput SetQuery
+                    , Options.onFocus OnFocus
+                    , Options.onWithOptions "keydown" options dec
+                    , Textfield.value query
+                    , Options.dispatch Batch
+                    , Options.attribute <| autocomplete False
+                    , Options.attribute <| attribute "aria-owns" "list-of-seaports"
+                    , Options.attribute <| attribute "aria-expanded" <| String.toLower <| toString model.showMenu
+                    , Options.attribute <| attribute "aria-haspopup" <| String.toLower <| toString model.showMenu
+                    , Options.attribute <| attribute "role" "combobox"
+                    , Options.attribute <| attribute "aria-autocomplete" "list"
+                    ]
+                    -- )
                     []
                 ]
                 menu

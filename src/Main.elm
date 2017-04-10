@@ -115,33 +115,38 @@ viewMain model =
         , Options.styled h3
             [ Typo.headline ]
             [ text "Search Best Freight Shipping Rates" ]
-        , viewPol model.pol
-        , viewPod model.pod
+        , viewBody model
+        ]
+
+
+viewBody : Model -> Html Msg
+viewBody model =
+    Grid.grid []
+        [ Grid.cell [ Grid.size Grid.All 5 ]
+            [ viewPol model.pol ]
+        , Grid.cell [ Grid.size Grid.All 5 ]
+            [ viewPod model.pod ]
+        , Grid.cell [ Grid.size Grid.All 2 ]
+            [ Button.render Mdl
+                [ 0 ]
+                model.mdl
+                [ Button.raised
+                , Button.colored
+                , Button.ripple
+                ]
+                [ text "Raised button" ]
+            ]
         ]
 
 
 viewPol : SearchSeaPort.Model -> Html Msg
 viewPol pol =
-    div [ class "example" ]
-        [ div [ class "example-info" ]
-            [ p [] [ text "Pol" ]
-            ]
-        , div [ class "example-autocomplete" ]
-            [ Html.map SearchPol (SearchSeaPort.view pol)
-            ]
-        ]
+    Html.map SearchPol (SearchSeaPort.view pol)
 
 
 viewPod : SearchSeaPort.Model -> Html Msg
 viewPod pod =
-    div [ class "example" ]
-        [ div [ class "example-info" ]
-            [ p [] [ text "Pol" ]
-            ]
-        , div [ class "example-autocomplete" ]
-            [ Html.map SearchPod (SearchSeaPort.view pod)
-            ]
-        ]
+    Html.map SearchPod (SearchSeaPort.view pod)
 
 
 header : List (Html Msg)
