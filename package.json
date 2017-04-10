@@ -1,0 +1,13 @@
+{
+  "name": "mediocre-elm-tutorial-app",
+  "version": "0.0.1",
+  "description": "FreightRates SPA in ELM",
+  "main": "index.js",
+  "repository": "git@github.com:mediocrehacker/mediocre-elm-tutorial-app.git",
+  "author": "mediocreHacker <mediocreHacker@protonmail.com>",
+  "license": "GNU",
+  "dependencies": {
+    "elm": "^0.18.0",
+    "global": "^4.3.1"
+  }
+}
