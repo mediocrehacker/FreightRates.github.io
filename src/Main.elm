@@ -17,6 +17,9 @@ import Material.Grid as Grid
 import Material.Color as Color
 import Material.Elevation as Elevation
 import Material.Typography as Typography
+import RemoteData exposing (RemoteData(..))
+import Http
+import Json.Decode as Decode
 
 
 -- Model
@@ -40,7 +43,7 @@ init : ( Model, Cmd Msg )
 init =
     ( { mdl = Material.model
       , pol = SearchSeaPort.initLabel "Port of Loading"
-      , pod = SearchSeaPort.initLabel "Port of Discharge "
+      , pod = SearchSeaPort.initLabel "Port of Discharge"
       , currentFocus = None
       }
     , Cmd.none
@@ -55,31 +58,61 @@ type Msg
     = Mdl (Material.Msg Msg)
     | SearchPol SearchSeaPort.Msg
     | SearchPod SearchSeaPort.Msg
+    | ChildMsg ChildPortalMsg
     | NoOp
+
+
+type ChildPortalMsg
+    = SearchSeaPolMsg SearchSeaPort.Msg
+    | SearchSeaPodMsg SearchSeaPort.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ChildMsg subMsg ->
+            case subMsg of
+                SearchSeaPolMsg spMsg ->
+                    let
+                        ( spModel, spCmd ) =
+                            SearchSeaPort.update spMsg model.pol
+                    in
+                        ( { model | pol = spModel }
+                        , Cmd.map (\b -> (ChildMsg (SearchSeaPolMsg b))) spCmd
+                        )
+
+                SearchSeaPodMsg spMsg ->
+                    let
+                        ( spModel, spCmd ) =
+                            SearchSeaPort.update spMsg model.pod
+                    in
+                        ( { model | pod = spModel }
+                        , Cmd.map (\b -> (ChildMsg (SearchSeaPodMsg b))) spCmd
+                        )
+
         SearchPol autoMsg ->
             let
-                _ =
-                    Debug.log "Pol: " model.pol
+                ( pol, cmd_ ) =
+                    (SearchSeaPort.update autoMsg model.pol)
             in
                 ( { model
-                    | pol = Tuple.first <| SearchSeaPort.update autoMsg model.pol
+                    | pol = pol
                     , currentFocus = Pol
                   }
-                , Cmd.none
+                , Cmd.map (\b -> ChildMsg (SearchSeaPolMsg b)) cmd_
                 )
 
         SearchPod autoMsg ->
-            ( { model
-                | pod = Tuple.first <| SearchSeaPort.update autoMsg model.pod
-                , currentFocus = Pod
-              }
-            , Cmd.none
-            )
+            let
+                ( pod, cmd_ ) =
+                    (SearchSeaPort.update autoMsg model.pod)
+            in
+                ( { model
+                    | pod = pod
+                    , currentFocus = Pod
+                  }
+                , Cmd.map (\b -> ChildMsg (SearchSeaPodMsg b)) cmd_
+                )
 
         Mdl msg_ ->
             Material.update Mdl msg_ model

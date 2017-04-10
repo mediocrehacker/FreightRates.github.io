@@ -1,5 +1,9 @@
 module SearchSeaPort exposing (..)
 
+import Types exposing (SeaPort)
+import RemoteData exposing (RemoteData(..))
+import Http
+import Json.Decode as Decode
 import Autocomplete
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -29,14 +33,15 @@ subscriptions model =
 
 
 type alias Model =
-    { seaPorts : List SeaPort
+    { remoteSeaPorts : RemoteData Http.Error (List SeaPort)
+    , label : String
+    , seaPorts : List SeaPort
     , autoState : Autocomplete.State
     , howManyToShow : Int
     , query : String
     , selectedSeaPort : Maybe SeaPort
     , showMenu : Bool
     , mdl : Material.Model
-    , label : String
     }
 
 
@@ -47,7 +52,8 @@ initLabel label =
 
 init : Model
 init =
-    { label = ""
+    { remoteSeaPorts = NotAsked
+    , label = ""
     , seaPorts = seaPorts
     , autoState = Autocomplete.empty
     , howManyToShow = 5
@@ -69,6 +75,8 @@ type Msg
     | PreviewSeaPort String
     | OnFocus
     | NoOp
+    | NewSeaPorts (Result Http.Error (List SeaPort))
+    | ReceiveSeaPorts (RemoteData.WebData (List SeaPort))
     | Mdl (Material.Msg Msg)
     | Batch (List Msg)
 
@@ -96,12 +104,44 @@ update msg model =
             in
                 ( finalModel, Cmd.batch listOfFx )
 
+        NewSeaPorts (Ok seaPorts) ->
+            let
+                _ =
+                    Debug.log "msg:" seaPorts
+            in
+                ( { model | seaPorts = seaPorts }, Cmd.none )
+
+        NewSeaPorts (Err err) ->
+            let
+                _ =
+                    Debug.log "msg:" err
+            in
+                ( model, Cmd.none )
+
+        ReceiveSeaPorts resp ->
+            case resp of
+                NotAsked ->
+                    ( model, Cmd.none )
+
+                Loading ->
+                    ( model, Cmd.none )
+
+                Failure e ->
+                    ( model, Cmd.none )
+
+                Success seaPorts ->
+                    ( { model | seaPorts = seaPorts }
+                    , Cmd.none
+                    )
+
         SetQuery newQuery ->
             let
                 showMenu =
                     not << List.isEmpty <| (acceptableSeaPorts newQuery model.seaPorts)
             in
-                { model | query = newQuery, showMenu = showMenu, selectedSeaPort = Nothing } ! []
+                ( { model | query = newQuery, showMenu = showMenu, selectedSeaPort = Nothing }
+                , Debug.log "SetQuery: " (getSeaPorts newQuery)
+                )
 
         SetAutoState autoMsg ->
             let
@@ -314,7 +354,47 @@ acceptableSeaPorts query seaPorts =
         lowerQuery =
             String.toLower query
     in
-        List.filter (String.contains lowerQuery << String.toLower << .name) seaPorts
+        -- List.filter (String.contains lowerQuery << String.toLower << .name) seaPorts
+        seaPorts
+
+
+
+-- HTTP
+
+
+getSeaPorts : String -> Cmd Msg
+getSeaPorts query =
+    let
+        _ =
+            Debug.log "model:" "test"
+    in
+        Http.send NewSeaPorts
+            (Http.get
+                ("http://seaports.herokuapp.com/seaports.json?q=" ++ query)
+                decodeSeaPorts
+            )
+
+
+decodeSeaPorts : Decode.Decoder (List SeaPort)
+decodeSeaPorts =
+    (Decode.field "seaports" (Decode.list decodeSeaPort))
+
+
+decodeSeaPort : Decode.Decoder SeaPort
+decodeSeaPort =
+    Decode.map3 SeaPort
+        (Decode.field "code" Decode.string)
+        (Decode.field "name" Decode.string)
+        (Decode.field "country" Decode.string)
+
+
+
+-- getSeaPorts : Cmd (RemoteData.WebData (List SeaPort))
+-- getSeaPorts =
+--     Http.get
+--         "http://seaports.herokuapp.com/seaports"
+--         (Decode.field "seaports" Decode.string)
+--         |> RemoteData.sendRequest
 
 
 viewMenu : Model -> Html Msg
@@ -398,13 +478,6 @@ viewConfig =
 
 
 -- Ports
-
-
-type alias SeaPort =
-    { code : String
-    , name : String
-    , country : String
-    }
 
 
 seaPorts : List SeaPort
