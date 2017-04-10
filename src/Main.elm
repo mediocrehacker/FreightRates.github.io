@@ -1,7 +1,9 @@
 module Main exposing (..)
 
+import SearchSeaPort exposing (..)
 import Html exposing (Html, program, div, text, h1, h2, h3, span, p)
-import Html.Attributes exposing (style)
+import Html.Attributes exposing (style, class)
+import Autocomplete
 import Material
 import Material.Scheme as Scheme
 import Material.Color as Color
@@ -22,16 +24,24 @@ import Material.Typography as Typography
 
 type alias Model =
     { mdl : Material.Model
-    , pol : String
-    , pod : String
+    , pol : SearchSeaPort.Model
+    , pod : SearchSeaPort.Model
+    , currentFocus : Focused
     }
+
+
+type Focused
+    = Pol
+    | Pod
+    | None
 
 
 init : ( Model, Cmd Msg )
 init =
     ( { mdl = Material.model
-      , pol = ""
-      , pod = ""
+      , pol = SearchSeaPort.init
+      , pod = SearchSeaPort.init
+      , currentFocus = None
       }
     , Cmd.none
     )
@@ -43,17 +53,35 @@ init =
 
 type Msg
     = Mdl (Material.Msg Msg)
+    | SearchPol SearchSeaPort.Msg
+    | SearchPod SearchSeaPort.Msg
     | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoOp ->
-            ( model, Cmd.none )
+        SearchPol autoMsg ->
+            ( { model
+                | pol = Tuple.first <| SearchSeaPort.update autoMsg model.pol
+                , currentFocus = Pol
+              }
+            , Cmd.none
+            )
+
+        SearchPod autoMsg ->
+            ( { model
+                | pod = Tuple.first <| SearchSeaPort.update autoMsg model.pod
+                , currentFocus = Pod
+              }
+            , Cmd.none
+            )
 
         Mdl msg_ ->
             Material.update Mdl msg_ model
+
+        NoOp ->
+            ( model, Cmd.none )
 
 
 
@@ -87,6 +115,32 @@ viewMain model =
         , Options.styled h3
             [ Typo.headline ]
             [ text "Search Best Freight Shipping Rates" ]
+        , viewPol model.pol
+        , viewPod model.pod
+        ]
+
+
+viewPol : SearchSeaPort.Model -> Html Msg
+viewPol pol =
+    div [ class "example" ]
+        [ div [ class "example-info" ]
+            [ p [] [ text "Pol" ]
+            ]
+        , div [ class "example-autocomplete" ]
+            [ Html.map SearchPol (SearchSeaPort.view pol)
+            ]
+        ]
+
+
+viewPod : SearchSeaPort.Model -> Html Msg
+viewPod pod =
+    div [ class "example" ]
+        [ div [ class "example-info" ]
+            [ p [] [ text "Pol" ]
+            ]
+        , div [ class "example-autocomplete" ]
+            [ Html.map SearchPod (SearchSeaPort.view pod)
+            ]
         ]
 
 
@@ -125,5 +179,18 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = (\x -> Sub.none)
+        , subscriptions = subscriptions
         }
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case model.currentFocus of
+        Pol ->
+            Sub.map SearchPol (SearchSeaPort.subscriptions model.pol)
+
+        Pod ->
+            Sub.map SearchPod (SearchSeaPort.subscriptions model.pod)
+
+        None ->
+            Sub.none
