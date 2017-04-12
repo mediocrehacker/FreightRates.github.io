@@ -1,7 +1,8 @@
 module Main exposing (..)
 
 import SearchSeaPort exposing (..)
-import Html exposing (Html, program, div, text, h1, h2, h3, span, p)
+import Types exposing (SeaPort)
+import Html exposing (Html, program, div, text, h1, h2, h3, span, p, ul, li)
 import Html.Attributes exposing (style, class)
 import Autocomplete
 import Material
@@ -30,6 +31,17 @@ type alias Model =
     , pol : SearchSeaPort.Model
     , pod : SearchSeaPort.Model
     , currentFocus : Focused
+    , tariffs : List Tariff
+    , errors : List String
+    }
+
+
+type alias Tariff =
+    { company : String
+    , container : String
+    , status : String
+    , freight : String
+    , baf : String
     }
 
 
@@ -39,12 +51,27 @@ type Focused
     | None
 
 
+searchSeaPortInit : SearchSeaPort.Model
+searchSeaPortInit =
+    SearchSeaPort.init
+
+
 init : ( Model, Cmd Msg )
 init =
     ( { mdl = Material.model
-      , pol = SearchSeaPort.initLabel "Port of Loading"
-      , pod = SearchSeaPort.initLabel "Port of Discharge"
+      , pol =
+            { searchSeaPortInit
+                | label = "Port of Loading"
+                , selectedSeaPort = Just (SeaPort "RUVVO" "Vladivostok" "Russis")
+            }
+      , pod =
+            { searchSeaPortInit
+                | label = "Port of Discharge"
+                , selectedSeaPort = Just (SeaPort "CNSHA" "Shanghai" "China")
+            }
       , currentFocus = None
+      , tariffs = []
+      , errors = []
       }
     , Cmd.none
     )
@@ -59,6 +86,8 @@ type Msg
     | SearchPol SearchSeaPort.Msg
     | SearchPod SearchSeaPort.Msg
     | ChildMsg ChildPortalMsg
+    | GetTariffs
+    | NewTariffs (Result Http.Error (List Tariff))
     | NoOp
 
 
@@ -70,6 +99,35 @@ type ChildPortalMsg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        GetTariffs ->
+            let
+                pol =
+                    model.pol.selectedSeaPort
+
+                pod =
+                    model.pod.selectedSeaPort
+            in
+                case ( pol, pod ) of
+                    ( Just seaPort1, Just seaPort2 ) ->
+                        ( model, getTariffs seaPort1 seaPort2 )
+
+                    _ ->
+                        ( model, Cmd.none )
+
+        NewTariffs (Ok tariffs) ->
+            let
+                _ =
+                    Debug.log "msg:" tariffs
+            in
+                ( { model | tariffs = tariffs }, Cmd.none )
+
+        NewTariffs (Err err) ->
+            let
+                _ =
+                    Debug.log "msg:" err
+            in
+                ( model, Cmd.none )
+
         ChildMsg subMsg ->
             case subMsg of
                 SearchSeaPolMsg spMsg ->
@@ -172,10 +230,47 @@ viewBody model =
                     [ Button.raised
                     , Button.colored
                     , Button.ripple
+                    , Options.onClick GetTariffs
                     ]
                     [ text "Raised button" ]
                 ]
             ]
+        , Grid.cell [ Grid.size Grid.All 12 ]
+            [ viewTariffs model.tariffs ]
+        ]
+
+
+viewTariffs : List Tariff -> Html Msg
+viewTariffs tariffs =
+    div []
+        [ ul
+            []
+            (List.map
+                (\x -> viewTariff x)
+                tariffs
+            )
+        ]
+
+
+viewTariff : Tariff -> Html Msg
+viewTariff t =
+    li []
+        [ text
+            ("company: "
+                ++ t.company
+                ++ " | "
+                ++ "container: "
+                ++ t.container
+                ++ " | "
+                ++ "status: "
+                ++ t.status
+                ++ " | "
+                ++ "freight: "
+                ++ t.freight
+                ++ " | "
+                ++ "baf: "
+                ++ t.baf
+            )
         ]
 
 
@@ -239,3 +334,31 @@ subscriptions model =
 
         None ->
             Sub.none
+
+
+
+-- HTTP
+
+
+getTariffs : SeaPort -> SeaPort -> Cmd Msg
+getTariffs pol pod =
+    Http.send NewTariffs
+        (Http.get
+            ("http://seaports.herokuapp.com/api/v1/tariffs/pols/" ++ pol.code ++ "/pods/" ++ pod.code)
+            decodeTariffs
+        )
+
+
+decodeTariffs : Decode.Decoder (List Tariff)
+decodeTariffs =
+    (Decode.field "tariffs" (Decode.list decodeTariff))
+
+
+decodeTariff : Decode.Decoder Tariff
+decodeTariff =
+    Decode.map5 Tariff
+        (Decode.field "company" Decode.string)
+        (Decode.field "container" Decode.string)
+        (Decode.field "status" Decode.string)
+        (Decode.field "freight" Decode.string)
+        (Decode.field "baf" Decode.string)

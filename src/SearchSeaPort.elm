@@ -83,7 +83,7 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case Debug.log "Message" msg of
+    case msg of
         Mdl msg_ ->
             Material.update Mdl msg_ model
 
@@ -364,15 +364,11 @@ acceptableSeaPorts query seaPorts =
 
 getSeaPorts : String -> Cmd Msg
 getSeaPorts query =
-    let
-        _ =
-            Debug.log "model:" "test"
-    in
-        Http.send NewSeaPorts
-            (Http.get
-                ("http://seaports.herokuapp.com/seaports.json?q=" ++ query)
-                decodeSeaPorts
-            )
+    Http.send NewSeaPorts
+        (Http.get
+            ("http://seaports.herokuapp.com/seaports.json?q=" ++ query)
+            decodeSeaPorts
+        )
 
 
 decodeSeaPorts : Decode.Decoder (List SeaPort)
