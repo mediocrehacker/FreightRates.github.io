@@ -22,6 +22,7 @@ import RemoteData exposing (RemoteData(..))
 import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
+import RemoteData exposing (RemoteData(..), WebData)
 
 
 -- Model
@@ -32,7 +33,7 @@ type alias Model =
     , pol : SearchSeaPort.Model
     , pod : SearchSeaPort.Model
     , currentFocus : Focused
-    , tariffs : List Tariff
+    , tariffs : WebData (List Tariff)
     , errors : List String
     }
 
@@ -62,7 +63,7 @@ init =
                 , selectedSeaPort = Just (SeaPort "CNSHA" "Shanghai" "China")
             }
       , currentFocus = None
-      , tariffs = []
+      , tariffs = NotAsked
       , errors = []
       }
     , Cmd.none
@@ -79,7 +80,7 @@ type Msg
     | SearchPod SearchSeaPort.Msg
     | ChildMsg ChildPortalMsg
     | GetTariffs
-    | NewTariffs (Result Http.Error (List Tariff))
+    | NewResponse (WebData (List Tariff))
     | NoOp
 
 
@@ -106,19 +107,8 @@ update msg model =
                     _ ->
                         ( model, Cmd.none )
 
-        NewTariffs (Ok tariffs) ->
-            let
-                _ =
-                    Debug.log "msg:" tariffs
-            in
-                ( { model | tariffs = tariffs }, Cmd.none )
-
-        NewTariffs (Err err) ->
-            let
-                _ =
-                    Debug.log "msg:" err
-            in
-                ( model, Cmd.none )
+        NewResponse response ->
+            ( { model | tariffs = response }, Cmd.none )
 
         ChildMsg subMsg ->
             case subMsg of
@@ -232,16 +222,27 @@ viewBody model =
         ]
 
 
-viewTariffs : List Tariff -> Html Msg
+viewTariffs : WebData (List Tariff) -> Html Msg
 viewTariffs tariffs =
-    div []
-        [ ul
-            []
-            (List.map
-                (\x -> viewTariff x)
-                tariffs
-            )
-        ]
+    case tariffs of
+        NotAsked ->
+            text "Initialising."
+
+        Loading ->
+            text "Loading."
+
+        Failure err ->
+            text ("Error: " ++ toString err)
+
+        Success tariffs ->
+            div []
+                [ ul
+                    []
+                    (List.map
+                        (\x -> viewTariff x)
+                        tariffs
+                    )
+                ]
 
 
 viewTariff : Tariff -> Html Msg
@@ -334,11 +335,9 @@ subscriptions model =
 
 getTariffs : SeaPort -> SeaPort -> Cmd Msg
 getTariffs pol pod =
-    Http.send NewTariffs
-        (Http.get
-            ("http://seaports.herokuapp.com/api/v1/tariffs/pols/" ++ pol.code ++ "/pods/" ++ pod.code)
-            decodeTariffs
-        )
+    Http.get ("http://seaports.herokuapp.com/api/v1/tariffs/pols/" ++ pol.code ++ "/pods/" ++ pod.code) decodeTariffs
+        |> RemoteData.sendRequest
+        |> Cmd.map NewResponse
 
 
 decodeTariffs : Decode.Decoder (List Tariff)
