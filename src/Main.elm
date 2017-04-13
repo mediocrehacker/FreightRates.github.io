@@ -1,7 +1,7 @@
 module Main exposing (..)
 
 import SearchSeaPort exposing (..)
-import Types exposing (SeaPort)
+import Types exposing (SeaPort, Tariff)
 import Html exposing (Html, program, div, text, h1, h2, h3, span, p, ul, li)
 import Html.Attributes exposing (style, class)
 import Autocomplete
@@ -21,6 +21,7 @@ import Material.Typography as Typography
 import RemoteData exposing (RemoteData(..))
 import Http
 import Json.Decode as Decode
+import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
 
 
 -- Model
@@ -33,15 +34,6 @@ type alias Model =
     , currentFocus : Focused
     , tariffs : List Tariff
     , errors : List String
-    }
-
-
-type alias Tariff =
-    { company : String
-    , container : String
-    , status : String
-    , freight : String
-    , baf : String
     }
 
 
@@ -356,9 +348,12 @@ decodeTariffs =
 
 decodeTariff : Decode.Decoder Tariff
 decodeTariff =
-    Decode.map5 Tariff
-        (Decode.field "company" Decode.string)
-        (Decode.field "container" Decode.string)
-        (Decode.field "status" Decode.string)
-        (Decode.field "freight" Decode.string)
-        (Decode.field "baf" Decode.string)
+    decode Tariff
+        |> required "company" Decode.string
+        |> required "pol" Decode.string
+        |> required "pod" Decode.string
+        |> required "container" Decode.string
+        |> required "status" Decode.string
+        |> required "owners" Decode.string
+        |> required "freight" Decode.string
+        |> required "baf" Decode.string
