@@ -28,3 +28,13 @@ type alias Tariff =
     , freight : String
     , baf : String
     }
+
+
+tariffs : List Tariff
+tariffs =
+    [ Tariff "FESCO" "RUVVO" "CNSHA" "40'HC" "Full" "SOC" "650.0" "50.0"
+    , Tariff "FESCO" "RUVVO" "CNSHA" "40'HC" "Full" "SOC" "700.0" "50.0"
+    , Tariff "FESCO" "RUVVO" "CNSHA" "20'DC" "Full" "SOC" "525.0" "25.0"
+    , Tariff "FESCO" "RUVVO" "CNSHA" "20'DC" "Full" "SOC" "550.0" "25.0"
+    , Tariff "FESCO" "RUVVO" "CNSHA" "40'RF" "Full" "SOC" "1300.0" "50.0"
+    ]

@@ -1,9 +1,9 @@
 module Main exposing (..)
 
 import SearchSeaPort exposing (..)
-import Types exposing (SeaPort, Tariff)
-import Html exposing (Html, program, div, text, h1, h2, h3, span, p, ul, li)
-import Html.Attributes exposing (style, class)
+import Types exposing (SeaPort, Tariff, tariffs)
+import Html exposing (Html, program, div, text, h1, h2, h3, span, p, ul, li, img)
+import Html.Attributes exposing (style, class, src)
 import Autocomplete
 import Material
 import Material.Scheme as Scheme
@@ -18,6 +18,7 @@ import Material.Grid as Grid
 import Material.Color as Color
 import Material.Elevation as Elevation
 import Material.Typography as Typography
+import Material.Progress as Loading
 import RemoteData exposing (RemoteData(..))
 import Http
 import Json.Decode as Decode
@@ -63,7 +64,7 @@ init =
                 , selectedSeaPort = Just (SeaPort "CNSHA" "Shanghai" "China")
             }
       , currentFocus = None
-      , tariffs = NotAsked
+      , tariffs = Success tariffs
       , errors = []
       }
     , Cmd.none
@@ -198,27 +199,29 @@ viewMain model =
 
 viewBody : Model -> Html Msg
 viewBody model =
-    Grid.grid []
-        [ Grid.cell [ Grid.size Grid.All 5 ]
-            [ viewPol model.pol ]
-        , Grid.cell [ Grid.size Grid.All 5 ]
-            [ viewPod model.pod ]
-        , Grid.cell [ Grid.size Grid.All 2 ]
-            [ div
-                [ style [ ( "padding", "10px 0" ) ] ]
-                [ Button.render Mdl
-                    [ 0 ]
-                    model.mdl
-                    [ Button.raised
-                    , Button.colored
-                    , Button.ripple
-                    , Options.onClick GetTariffs
+    div []
+        [ Grid.grid
+            []
+            [ Grid.cell [ Grid.size Grid.All 5, Grid.size Grid.Tablet 12 ]
+                [ viewPol model.pol ]
+            , Grid.cell [ Grid.size Grid.All 5, Grid.size Grid.Tablet 12 ]
+                [ viewPod model.pod ]
+            , Grid.cell [ Grid.size Grid.All 2, Grid.size Grid.Tablet 12 ]
+                [ div
+                    [ style [ ( "padding", "10px 0" ) ] ]
+                    [ Button.render Mdl
+                        [ 0 ]
+                        model.mdl
+                        [ Button.raised
+                        , Button.colored
+                        , Button.ripple
+                        , Options.onClick GetTariffs
+                        ]
+                        [ text "Raised button" ]
                     ]
-                    [ text "Raised button" ]
                 ]
             ]
-        , Grid.cell [ Grid.size Grid.All 12 ]
-            [ viewTariffs model.tariffs ]
+        , viewTariffs model.tariffs
         ]
 
 
@@ -235,36 +238,94 @@ viewTariffs tariffs =
             text ("Error: " ++ toString err)
 
         Success tariffs ->
-            div []
-                [ ul
-                    []
-                    (List.map
-                        (\x -> viewTariff x)
-                        tariffs
-                    )
-                ]
+            Grid.grid
+                []
+                ([ Grid.cell [ Grid.size Grid.All 12 ]
+                    [ p [] [ text ((toString (List.length tariffs)) ++ " results") ] ]
+                 ]
+                    ++ viewSuccessTariffs tariffs
+                )
 
 
-viewTariff : Tariff -> Html Msg
+viewSuccessTariffs : List Tariff -> List (Grid.Cell Msg)
+viewSuccessTariffs tariffs =
+    List.map
+        (\x -> viewTariff x)
+        tariffs
+
+
+viewTariff : Tariff -> Grid.Cell Msg
 viewTariff t =
-    li []
-        [ text
-            ("company: "
-                ++ t.company
-                ++ " | "
-                ++ "container: "
-                ++ t.container
-                ++ " | "
-                ++ "status: "
-                ++ t.status
-                ++ " | "
-                ++ "freight: "
-                ++ t.freight
-                ++ " | "
-                ++ "baf: "
-                ++ t.baf
-            )
-        ]
+    let
+        price =
+            "$"
+                ++ (toString
+                        ((Result.withDefault 0 (String.toFloat t.baf))
+                            + (Result.withDefault 0 (String.toFloat t.freight))
+                        )
+                   )
+    in
+        Grid.cell
+            [ Grid.size Grid.All 12
+            , Elevation.e2
+            , Options.css "margin" "1.2rem 0"
+            ]
+            [ Grid.grid
+                []
+                [ Grid.cell
+                    [ Grid.size Grid.All 3
+                    , Options.css "min-height" "150px"
+                    , Options.center
+                    , Grid.align Grid.Middle
+                    ]
+                    [ img
+                        [ src "http://www.fesco.ru/local/templates/fesco_new/img/logo.png"
+                        ]
+                        []
+                    ]
+                , Grid.cell
+                    [ Grid.size Grid.All 2
+                    , Grid.align Grid.Middle
+                    , Options.css "text-align" "center"
+                    ]
+                    [ Options.styled p
+                        [ Typo.title ]
+                        [ text "Vladivostok" ]
+                    , Options.styled p
+                        [ Typo.subhead ]
+                        [ text t.pol ]
+                    ]
+                , Grid.cell
+                    [ Grid.size Grid.All 3
+                    , Grid.align Grid.Middle
+                    ]
+                    [ div [ style [ ( "padding-top", "0px" ), ( "text-align", "center" ) ] ] [ p [] [ text t.container ] ]
+                    , Loading.progress 100
+                    , div [ style [ ( "padding-top", "10px" ), ( "text-align", "center" ) ] ] [ Icon.view "directions_boat" [ Icon.size24, Color.text Color.primary ] ]
+                    ]
+                , Grid.cell
+                    [ Grid.size Grid.All 2
+                    , Grid.align Grid.Middle
+                    , Options.css "text-align" "center"
+                    ]
+                    [ Options.styled p
+                        [ Typo.title ]
+                        [ text "Shanghai" ]
+                    , Options.styled p
+                        [ Typo.subhead ]
+                        [ text t.pod ]
+                    ]
+                , Grid.cell
+                    [ Grid.size Grid.All 2
+                    , Options.center
+                    , Grid.align Grid.Middle
+                    ]
+                    [ Options.styled p
+                        [ Typo.title ]
+                        [ text price ]
+                    ]
+                ]
+            ]
 
 
 viewPol : SearchSeaPort.Model -> Html Msg
