@@ -19,6 +19,7 @@ import Material.Color as Color
 import Material.Elevation as Elevation
 import Material.Typography as Typography
 import Material.Progress as Loading
+import Material.Chip as Chip
 import RemoteData exposing (RemoteData(..))
 import Http
 import Json.Decode as Decode
@@ -249,12 +250,12 @@ viewTariffs tariffs =
 
 viewSuccessTariffs : List Tariff -> List (Grid.Cell Msg)
 viewSuccessTariffs tariffs =
-    List.map
+    List.filterMap
         (\x -> viewTariff x)
         tariffs
 
 
-viewTariff : Tariff -> Grid.Cell Msg
+viewTariff : Tariff -> Maybe (Grid.Cell Msg)
 viewTariff t =
     let
         price =
@@ -265,67 +266,80 @@ viewTariff t =
                         )
                    )
     in
-        Grid.cell
-            [ Grid.size Grid.All 12
-            , Elevation.e2
-            , Options.css "margin" "1.2rem 0"
-            ]
-            [ Grid.grid
-                []
-                [ Grid.cell
-                    [ Grid.size Grid.All 3
-                    , Options.css "min-height" "150px"
-                    , Options.center
-                    , Grid.align Grid.Middle
+        if t.container == "" then
+            Nothing
+        else
+            Just <|
+                Grid.cell
+                    [ Grid.size Grid.All 12
+                    , Elevation.e2
+                    , Options.css "margin" "1.2rem 0"
                     ]
-                    [ img
-                        [ src "http://www.fesco.ru/local/templates/fesco_new/img/logo.png"
-                        ]
+                    [ Grid.grid
                         []
+                        [ Grid.cell
+                            [ Grid.size Grid.All 3
+                            , Options.css "min-height" "150px"
+                            ]
+                            [ Chip.span []
+                                [ Chip.content []
+                                    [ text (t.owners) ]
+                                ]
+                            , Chip.span [ Options.css "margin-left" "10px" ]
+                                [ Chip.content []
+                                    [ text (t.status) ]
+                                ]
+                            , img
+                                [ src ("/src/static/lines/" ++ (String.toLower t.company) ++ ".png")
+                                , style [ ( "margin-top", "30px" ) ]
+                                ]
+                                []
+                            ]
+                        , Grid.cell
+                            [ Grid.size Grid.All 2
+                            , Grid.align Grid.Middle
+                            , Options.css "text-align" "center"
+                            ]
+                            [ Options.styled p
+                                [ Typo.title ]
+                                [ text "Vladivostok" ]
+                            , Options.styled p
+                                [ Typo.subhead ]
+                                [ text t.pol ]
+                            ]
+                        , Grid.cell
+                            [ Grid.size Grid.All 3
+                            , Grid.align Grid.Middle
+                            ]
+                            [ div [ style [ ( "padding-top", "0px" ), ( "text-align", "center" ) ] ]
+                                [ p [] [ text t.container ]
+                                ]
+                            , Loading.progress 100
+                            , div [ style [ ( "padding-top", "10px" ), ( "text-align", "center" ) ] ] [ Icon.view "directions_boat" [ Icon.size24, Color.text Color.primary ] ]
+                            ]
+                        , Grid.cell
+                            [ Grid.size Grid.All 2
+                            , Grid.align Grid.Middle
+                            , Options.css "text-align" "center"
+                            ]
+                            [ Options.styled p
+                                [ Typo.title ]
+                                [ text "Shanghai" ]
+                            , Options.styled p
+                                [ Typo.subhead ]
+                                [ text t.pod ]
+                            ]
+                        , Grid.cell
+                            [ Grid.size Grid.All 2
+                            , Options.css "text-align" "center"
+                            , Grid.align Grid.Middle
+                            ]
+                            [ Options.styled p
+                                [ Typo.title ]
+                                [ text price ]
+                            ]
+                        ]
                     ]
-                , Grid.cell
-                    [ Grid.size Grid.All 2
-                    , Grid.align Grid.Middle
-                    , Options.css "text-align" "center"
-                    ]
-                    [ Options.styled p
-                        [ Typo.title ]
-                        [ text "Vladivostok" ]
-                    , Options.styled p
-                        [ Typo.subhead ]
-                        [ text t.pol ]
-                    ]
-                , Grid.cell
-                    [ Grid.size Grid.All 3
-                    , Grid.align Grid.Middle
-                    ]
-                    [ div [ style [ ( "padding-top", "0px" ), ( "text-align", "center" ) ] ] [ p [] [ text t.container ] ]
-                    , Loading.progress 100
-                    , div [ style [ ( "padding-top", "10px" ), ( "text-align", "center" ) ] ] [ Icon.view "directions_boat" [ Icon.size24, Color.text Color.primary ] ]
-                    ]
-                , Grid.cell
-                    [ Grid.size Grid.All 2
-                    , Grid.align Grid.Middle
-                    , Options.css "text-align" "center"
-                    ]
-                    [ Options.styled p
-                        [ Typo.title ]
-                        [ text "Shanghai" ]
-                    , Options.styled p
-                        [ Typo.subhead ]
-                        [ text t.pod ]
-                    ]
-                , Grid.cell
-                    [ Grid.size Grid.All 2
-                    , Options.center
-                    , Grid.align Grid.Middle
-                    ]
-                    [ Options.styled p
-                        [ Typo.title ]
-                        [ text price ]
-                    ]
-                ]
-            ]
 
 
 viewPol : SearchSeaPort.Model -> Html Msg
