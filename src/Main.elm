@@ -1,30 +1,30 @@
 module Main exposing (..)
 
-import SearchSeaPort exposing (..)
-import Types exposing (SeaPort, Tariff, tariffs)
+import Autocomplete
 import Html exposing (Html, program, div, text, h1, h2, h3, span, p, ul, li, img)
 import Html.Attributes exposing (style, class, src)
-import Autocomplete
-import Material
-import Material.Scheme as Scheme
-import Material.Color as Color
-import Material.Layout as Layout
-import Material.Toggles as Toggles
-import Material.Button as Button
-import Material.Options as Options
-import Material.Typography as Typo
-import Material.Icon as Icon
-import Material.Grid as Grid
-import Material.Color as Color
-import Material.Elevation as Elevation
-import Material.Typography as Typography
-import Material.Progress as Loading
-import Material.Chip as Chip
-import RemoteData exposing (RemoteData(..))
 import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
+import Material
+import Material.Button as Button
+import Material.Chip as Chip
+import Material.Color as Color
+import Material.Color as Color
+import Material.Elevation as Elevation
+import Material.Grid as Grid
+import Material.Icon as Icon
+import Material.Layout as Layout
+import Material.Options as Options
+import Material.Progress as Loading
+import Material.Scheme as Scheme
+import Material.Toggles as Toggles
+import Material.Typography as Typo
+import Material.Tabs as Tabs
+import RemoteData exposing (RemoteData(..))
 import RemoteData exposing (RemoteData(..), WebData)
+import SearchSeaPort exposing (..)
+import Types exposing (SeaPort, Tariff, tariffs)
 
 
 -- Model
@@ -37,6 +37,7 @@ type alias Model =
     , currentFocus : Focused
     , tariffs : WebData (List Tariff)
     , errors : List String
+    , tab : Int
     }
 
 
@@ -53,23 +54,23 @@ searchSeaPortInit =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { mdl = Material.model
-      , pol =
-            { searchSeaPortInit
-                | label = "Port of Loading"
-                , selectedSeaPort = Just (SeaPort "RUVVO" "Vladivostok" "Russis")
-            }
-      , pod =
-            { searchSeaPortInit
-                | label = "Port of Discharge"
-                , selectedSeaPort = Just (SeaPort "CNSHA" "Shanghai" "China")
-            }
-      , currentFocus = None
-      , tariffs = Success tariffs
-      , errors = []
-      }
-    , Cmd.none
-    )
+    { mdl = Material.model
+    , pol =
+        { searchSeaPortInit
+            | label = "Port of Loading"
+            , selectedSeaPort = Just (SeaPort "RUVVO" "Vladivostok" "Russis")
+        }
+    , pod =
+        { searchSeaPortInit
+            | label = "Port of Discharge"
+            , selectedSeaPort = Just (SeaPort "CNSHA" "Shanghai" "China")
+        }
+    , currentFocus = None
+    , tariffs = Success tariffs
+    , errors = []
+    , tab = -1
+    }
+        ! []
 
 
 
@@ -83,6 +84,7 @@ type Msg
     | ChildMsg ChildPortalMsg
     | GetTariffs
     | NewResponse (WebData (List Tariff))
+    | SelectTab Int
     | NoOp
 
 
@@ -156,6 +158,9 @@ update msg model =
                 , Cmd.map (\b -> ChildMsg (SearchSeaPodMsg b)) cmd_
                 )
 
+        SelectTab id ->
+            { model | tab = id } ! []
+
         Mdl msg_ ->
             Material.update Mdl msg_ model
 
@@ -222,13 +227,13 @@ viewBody model =
                     ]
                 ]
             ]
-        , viewTariffs model.tariffs
+        , viewTariffs model
         ]
 
 
-viewTariffs : WebData (List Tariff) -> Html Msg
-viewTariffs tariffs =
-    case tariffs of
+viewTariffs : Model -> Html Msg
+viewTariffs model =
+    case model.tariffs of
         NotAsked ->
             text "Initialising."
 
@@ -241,11 +246,78 @@ viewTariffs tariffs =
         Success tariffs ->
             Grid.grid
                 []
-                ([ Grid.cell [ Grid.size Grid.All 12 ]
-                    [ p [] [ text ((toString (List.length tariffs)) ++ " results") ] ]
+                ([ Grid.cell
+                    [ Grid.hide Grid.Phone
+                    , Grid.size Grid.All 12
+                    ]
+                    [ filtersView model ]
                  ]
                     ++ viewSuccessTariffs tariffs
                 )
+
+
+filtersView : Model -> Html Msg
+filtersView model =
+    Tabs.render Mdl
+        [ 0 ]
+        model.mdl
+        [ Tabs.ripple
+        , Tabs.onSelectTab SelectTab
+        , Tabs.activeTab model.tab
+        ]
+        [ Tabs.label
+            [ Options.center ]
+            [ Icon.i "info_outline"
+            , Options.span [ Options.css "width" "4px" ] []
+            , text "Container Type"
+            ]
+        , Tabs.label
+            [ Options.center ]
+            [ Icon.i "info_outline"
+            , Options.span [ Options.css "width" "4px" ] []
+            , text "Price range"
+            ]
+        , Tabs.label
+            [ Options.center ]
+            [ Icon.i "info_outline"
+            , Options.span [ Options.css "width" "4px" ] []
+            , text "Company name"
+            ]
+        , Tabs.label
+            [ Options.center ]
+            [ Icon.i "info_outline"
+            , Options.span [ Options.css "width" "4px" ] []
+            , text "More filters"
+            ]
+        ]
+        [ case model.tab of
+            0 ->
+                containersTab
+
+            1 ->
+                priceTab
+
+            2 ->
+                companiesTab
+
+            _ ->
+                companiesTab
+        ]
+
+
+containersTab : Html Msg
+containersTab =
+    p [] [ text "Container Type" ]
+
+
+priceTab : Html Msg
+priceTab =
+    p [] [ text "Price Range" ]
+
+
+companiesTab : Html Msg
+companiesTab =
+    p [] [ text "Company Name" ]
 
 
 viewSuccessTariffs : List Tariff -> List (Grid.Cell Msg)
@@ -273,7 +345,6 @@ viewTariff t =
                 Grid.cell
                     [ Grid.size Grid.All 12
                     , Elevation.e2
-                    , Options.css "margin" "1.2rem 0"
                     ]
                     [ Grid.grid
                         []
