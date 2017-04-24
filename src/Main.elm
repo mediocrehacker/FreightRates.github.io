@@ -3,6 +3,7 @@ module Main exposing (..)
 import Autocomplete
 import Html exposing (..)
 import Html.Attributes exposing (style, class, src)
+import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
@@ -25,6 +26,7 @@ import RemoteData exposing (RemoteData(..))
 import RemoteData exposing (RemoteData(..), WebData)
 import SearchSeaPort exposing (..)
 import Types exposing (SeaPort, Tariff, tariffs)
+import List.Extra as ListExtra
 
 
 -- Model
@@ -38,6 +40,7 @@ type alias Model =
     , tariffs : WebData (List Tariff)
     , errors : List String
     , filterTabs : List FilterTab
+    , filterContainers : List FilterContainer
     }
 
 
@@ -48,6 +51,12 @@ type Focused
 
 
 type alias FilterTab =
+    { label : String
+    , active : Bool
+    }
+
+
+type alias FilterContainer =
     { label : String
     , active : Bool
     }
@@ -64,6 +73,17 @@ initFilters =
     , FilterTab "Price range" False
     , FilterTab "Shipping Line" False
     , FilterTab "More Filters" False
+    ]
+
+
+initFilterContainer : List FilterContainer
+initFilterContainer =
+    [ FilterContainer "20'" False
+    , FilterContainer "20'RF" False
+    , FilterContainer "40'" False
+    , FilterContainer "40'HC" False
+    , FilterContainer "20'DC" False
+    , FilterContainer "40'RF" False
     ]
 
 
@@ -84,6 +104,7 @@ init =
     , tariffs = Success tariffs
     , errors = []
     , filterTabs = initFilters
+    , filterContainers = initFilterContainer
     }
         ! []
 
@@ -100,6 +121,8 @@ type Msg
     | GetTariffs
     | NewResponse (WebData (List Tariff))
     | SelectFilterTab String
+    | ToggleFilterContainer String
+    | ApplyFilterContainers Bool
     | NoOp
 
 
@@ -110,7 +133,7 @@ type ChildPortalMsg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
+    case Debug.log "msg: " msg of
         GetTariffs ->
             let
                 pol =
@@ -189,6 +212,26 @@ update msg model =
                         model.filterTabs
             in
                 { model | filterTabs = filterTabs_ } ! []
+
+        ApplyFilterContainers bool ->
+            model ! []
+
+        ToggleFilterContainer label ->
+            let
+                filterContainers_ =
+                    List.map
+                        (\x ->
+                            if x.label == label then
+                                if x.active then
+                                    { x | active = False }
+                                else
+                                    { x | active = True }
+                            else
+                                x
+                        )
+                        model.filterContainers
+            in
+                { model | filterContainers = filterContainers_ } ! []
 
         Mdl msg_ ->
             Material.update Mdl msg_ model
@@ -279,14 +322,16 @@ viewTariffs model =
                     [ Grid.size Grid.All 12
                     , Options.cs "mdl-cell--hide-tablet"
                     ]
-                    [ filtersView model ]
+                    [ filtersMenu model
+                    , filtersView model
+                    ]
                  ]
                     ++ viewSuccessTariffs tariffs
                 )
 
 
-filtersView : Model -> Html Msg
-filtersView model =
+filtersMenu : Model -> Html Msg
+filtersMenu model =
     nav []
         [ ul
             [ style
@@ -296,12 +341,12 @@ filtersView model =
                 , ( "padding", "0" )
                 ]
             ]
-            (viewFilterTabs model)
+            (viewFilterMenuItems model)
         ]
 
 
-viewFilterTabs : Model -> List (Html Msg)
-viewFilterTabs model =
+viewFilterMenuItems : Model -> List (Html Msg)
+viewFilterMenuItems model =
     let
         active_button_css status =
             if status then
@@ -335,9 +380,102 @@ viewFilterTabs model =
         List.map (\x -> item x) model.filterTabs
 
 
-containersTab : Html Msg
-containersTab =
-    p [] [ text "Container Type" ]
+filtersView : Model -> Html Msg
+filtersView model =
+    div [ style [ ( "position", "relative" ) ] ]
+        [ div []
+            [ containersFilter model ]
+        ]
+
+
+containersFilter : Model -> Html Msg
+containersFilter model =
+    let
+        containers =
+            List.indexedMap (,) model.filterContainers
+
+        displayStatus =
+            if (List.any (\x -> (x.label == "Container Type") && (x.active == True)) model.filterTabs) then
+                "block"
+            else
+                "none"
+    in
+        div
+            [ style
+                [ ( "position", "absolute" )
+                , ( "top", "0px" )
+                , ( "left", "0px" )
+                , ( "z-index", "10" )
+                , ( "box-shadow", "rgba(0, 0, 0, 0.14902) 0px 14px 36px 2px" )
+                , ( "overflow-y", "auto" )
+                , ( "visibility", "visible" )
+                , ( "white-space", "normal" )
+                , ( "width", "250px" )
+                , ( "background", "rgb(255, 255, 255)" )
+                , ( "border-width", "1px" )
+                , ( "border-style", "solid" )
+                , ( "border-color", "rgba(0, 0, 0, 0.2)" )
+                , ( "border-image", "initial" )
+                , ( "border-radius", "4px" )
+                , ( "padding", "24px" )
+                , ( "display", displayStatus )
+                ]
+            ]
+            [ ul
+                [ style
+                    [ ( "list-style", "none" )
+                    , ( "padding", "0" )
+                    ]
+                ]
+                (List.map
+                    (\( i, filter ) ->
+                        toogleContainerFilter model ( i, filter )
+                    )
+                    containers
+                )
+            , ul
+                [ style
+                    [ ( "list-style", "none" )
+                    , ( "padding", "0" )
+                    , ( "display", "flex" )
+                    , ( "justify-content", "space-between" )
+                    ]
+                ]
+                [ li []
+                    [ Button.render Mdl
+                        [ 1, 1, 0 ]
+                        model.mdl
+                        [ Options.onClick (ApplyFilterContainers False)
+                        ]
+                        [ text "Cancel" ]
+                    ]
+                , li []
+                    [ Button.render Mdl
+                        [ 1, 1, 1 ]
+                        model.mdl
+                        [ Options.onClick (ApplyFilterContainers True)
+                        , Button.colored
+                        ]
+                        [ text "Apply" ]
+                    ]
+                ]
+            ]
+
+
+toogleContainerFilter : Model -> ( Int, FilterContainer ) -> Html Msg
+toogleContainerFilter model ( int, filter ) =
+    li
+        [ onClick (ToggleFilterContainer filter.label) ]
+        [ Toggles.checkbox Mdl
+            [ 1, int ]
+            model.mdl
+            [ Options.onToggle (ToggleFilterContainer filter.label)
+            , Toggles.ripple
+            , Toggles.value filter.active
+            , Options.css "cursor" "pointer"
+            ]
+            [ text filter.label ]
+        ]
 
 
 priceTab : Html Msg
