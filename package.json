@@ -21,7 +21,7 @@
     "webpack-merge": "^4.1.0"
   },
   "scripts": {
-    "start": "webpack-dashboard -- webpack-dev-server --hot --inline",
+    "start": "webpack-dev-server --hot --inline ",
     "build": "rimraf dist && webpack"
   }
 }

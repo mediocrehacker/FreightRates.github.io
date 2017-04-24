@@ -1,7 +1,7 @@
 module Main exposing (..)
 
 import Autocomplete
-import Html exposing (Html, program, div, text, h1, h2, h3, span, p, ul, li, img)
+import Html exposing (..)
 import Html.Attributes exposing (style, class, src)
 import Http
 import Json.Decode as Decode
@@ -37,7 +37,7 @@ type alias Model =
     , currentFocus : Focused
     , tariffs : WebData (List Tariff)
     , errors : List String
-    , tab : Int
+    , filterTabs : List FilterTab
     }
 
 
@@ -47,9 +47,24 @@ type Focused
     | None
 
 
+type alias FilterTab =
+    { label : String
+    , active : Bool
+    }
+
+
 searchSeaPortInit : SearchSeaPort.Model
 searchSeaPortInit =
     SearchSeaPort.init
+
+
+initFilters : List FilterTab
+initFilters =
+    [ FilterTab "Container Type" False
+    , FilterTab "Price range" False
+    , FilterTab "Shipping Line" False
+    , FilterTab "More Filters" False
+    ]
 
 
 init : ( Model, Cmd Msg )
@@ -68,7 +83,7 @@ init =
     , currentFocus = None
     , tariffs = Success tariffs
     , errors = []
-    , tab = -1
+    , filterTabs = initFilters
     }
         ! []
 
@@ -84,7 +99,7 @@ type Msg
     | ChildMsg ChildPortalMsg
     | GetTariffs
     | NewResponse (WebData (List Tariff))
-    | SelectTab Int
+    | SelectFilterTab String
     | NoOp
 
 
@@ -158,8 +173,22 @@ update msg model =
                 , Cmd.map (\b -> ChildMsg (SearchSeaPodMsg b)) cmd_
                 )
 
-        SelectTab id ->
-            { model | tab = id } ! []
+        SelectFilterTab label ->
+            let
+                filterTabs_ =
+                    List.map
+                        (\x ->
+                            if x.label == label then
+                                if x.active then
+                                    { x | active = False }
+                                else
+                                    { x | active = True }
+                            else
+                                { x | active = False }
+                        )
+                        model.filterTabs
+            in
+                { model | filterTabs = filterTabs_ } ! []
 
         Mdl msg_ ->
             Material.update Mdl msg_ model
@@ -245,10 +274,10 @@ viewTariffs model =
 
         Success tariffs ->
             Grid.grid
-                []
+                [ Grid.hide Grid.All ]
                 ([ Grid.cell
-                    [ Grid.hide Grid.Phone
-                    , Grid.size Grid.All 12
+                    [ Grid.size Grid.All 12
+                    , Options.cs "mdl-cell--hide-tablet"
                     ]
                     [ filtersView model ]
                  ]
@@ -258,51 +287,52 @@ viewTariffs model =
 
 filtersView : Model -> Html Msg
 filtersView model =
-    Tabs.render Mdl
-        [ 0 ]
-        model.mdl
-        [ Tabs.ripple
-        , Tabs.onSelectTab SelectTab
-        , Tabs.activeTab model.tab
+    nav []
+        [ ul
+            [ style
+                [ ( "display", "flex" )
+                , ( "width", "100%" )
+                , ( "list-style", "none" )
+                , ( "padding", "0" )
+                ]
+            ]
+            (viewFilterTabs model)
         ]
-        [ Tabs.label
-            [ Options.center ]
-            [ Icon.i "info_outline"
-            , Options.span [ Options.css "width" "4px" ] []
-            , text "Container Type"
-            ]
-        , Tabs.label
-            [ Options.center ]
-            [ Icon.i "info_outline"
-            , Options.span [ Options.css "width" "4px" ] []
-            , text "Price range"
-            ]
-        , Tabs.label
-            [ Options.center ]
-            [ Icon.i "info_outline"
-            , Options.span [ Options.css "width" "4px" ] []
-            , text "Company name"
-            ]
-        , Tabs.label
-            [ Options.center ]
-            [ Icon.i "info_outline"
-            , Options.span [ Options.css "width" "4px" ] []
-            , text "More filters"
-            ]
-        ]
-        [ case model.tab of
-            0 ->
-                containersTab
 
-            1 ->
-                priceTab
 
-            2 ->
-                companiesTab
+viewFilterTabs : Model -> List (Html Msg)
+viewFilterTabs model =
+    let
+        active_button_css status =
+            if status then
+                Options.css "background-color" "rgba(158,158,158,.2)"
+            else
+                Options.css "" ""
 
-            _ ->
-                companiesTab
-        ]
+        active_icon_css status =
+            if status then
+                [ ( "transform", "rotate(180deg)" ) ]
+            else
+                [ ( "transform", "rotate(0deg)" ) ]
+
+        item x =
+            li []
+                [ Button.render Mdl
+                    [ 13 ]
+                    model.mdl
+                    [ Options.center
+                    , Options.onClick (SelectFilterTab x.label)
+                    , active_button_css x.active
+                    ]
+                    [ span [ style [ ( "margin-right", "4px" ) ] ]
+                        [ text x.label ]
+                    , span
+                        [ style ([ ( "transition-duration", "250ms" ) ] ++ (active_icon_css x.active)) ]
+                        [ Icon.i "expand_more" ]
+                    ]
+                ]
+    in
+        List.map (\x -> item x) model.filterTabs
 
 
 containersTab : Html Msg
