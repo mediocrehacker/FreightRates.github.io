@@ -395,20 +395,23 @@ decodeSeaPort =
 
 viewMenu : Model -> Html Msg
 viewMenu model =
-    div
-        [ class "autocomplete-menu"
-        , style
-            [ ( "position", "relative" )
-            , ( "margin-top", "-15px" )
-            , ( "background", "white" )
-            , ( "color", "black" )
-            , ( "border", "1px solid #DDD" )
-            , ( "border-radius", "3px" )
-            , ( "box-shadow", "0 0 5px rgba(0,0,0,0.1)" )
-            , ( "min-width", "120px" )
+    div [ style [ ( "position", "relative" ) ] ]
+        [ div
+            [ class "autocomplete-menu"
+            , style
+                [ ( "position", "absolute" )
+                , ( "margin-top", "-15px" )
+                , ( "background", "white" )
+                , ( "color", "black" )
+                , ( "border", "1px solid #DDD" )
+                , ( "border-radius", "3px" )
+                , ( "box-shadow", "0 0 5px rgba(0,0,0,0.1)" )
+                , ( "width", "100%" )
+                , ( "z-index", "10" )
+                ]
             ]
+            [ Html.map SetAutoState (Autocomplete.view viewConfig model.howManyToShow model.autoState (acceptableSeaPorts model.query model.seaPorts)) ]
         ]
-        [ Html.map SetAutoState (Autocomplete.view viewConfig model.howManyToShow model.autoState (acceptableSeaPorts model.query model.seaPorts)) ]
 
 
 updateConfig : Autocomplete.UpdateConfig Msg SeaPort
