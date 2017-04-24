@@ -366,7 +366,7 @@ getSeaPorts : String -> Cmd Msg
 getSeaPorts query =
     Http.send NewSeaPorts
         (Http.get
-            ("http://seaports.herokuapp.com/seaports.json?q=" ++ query)
+            ("https://seaports.herokuapp.com/seaports.json?q=" ++ query)
             decodeSeaPorts
         )
 

@@ -511,7 +511,7 @@ subscriptions model =
 
 getTariffs : SeaPort -> SeaPort -> Cmd Msg
 getTariffs pol pod =
-    Http.get ("http://seaports.herokuapp.com/api/v1/tariffs/pols/" ++ pol.code ++ "/pods/" ++ pod.code) decodeTariffs
+    Http.get ("https://seaports.herokuapp.com/api/v1/tariffs/pols/" ++ pol.code ++ "/pods/" ++ pod.code) decodeTariffs
         |> RemoteData.sendRequest
         |> Cmd.map NewResponse
 
