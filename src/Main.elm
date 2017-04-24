@@ -361,7 +361,7 @@ viewTariff t =
                                     [ text (t.status) ]
                                 ]
                             , img
-                                [ src ("/src/static/lines/" ++ (String.toLower t.company) ++ ".png")
+                                [ src ("static/img/" ++ (String.toLower t.company) ++ ".png")
                                 , style [ ( "margin-top", "30px" ) ]
                                 ]
                                 []
