@@ -4,6 +4,7 @@ import Autocomplete
 import Html exposing (..)
 import Html.Attributes exposing (style, class, src)
 import Html.Events exposing (onClick)
+import Set
 import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
@@ -40,7 +41,7 @@ type alias Model =
     , tariffs : WebData (List Tariff)
     , errors : List String
     , filterTabs : List FilterTab
-    , filterContainers : List FilterContainer
+    , filterContainers : Set.Set String
     }
 
 
@@ -56,10 +57,37 @@ type alias FilterTab =
     }
 
 
-type alias FilterContainer =
-    { label : String
-    , active : Bool
-    }
+
+-- type alias FilterContainer =
+--     { label : String
+--     , active : Bool
+--     }
+-- type Container
+--     = C20DRY
+--     | C20REEF
+--     | C40DRY
+--     | C40HC
+--     | C40REEF
+-- allContainers : List ( Int, String, Container )
+-- allContainers =
+--     [ ( 0, "20DRY", C20DRY )
+--     , ( 1, "20REEF", C20REEF )
+--     , ( 2, "40DRY", C40DRY )
+--     , ( 3, "40HC", C40HC )
+--     , ( 4, "40REEF", C40REEF )
+--     ]
+-- allDictContainers : Dict String Container
+-- allDictContainers =
+--     Dict.fromList allContainers
+-- initFilterContainer : List FilterContainer
+-- initFilterContainer =
+--     [ FilterContainer "20'" False
+--     , FilterContainer "20'RF" False
+--     , FilterContainer "40'" False
+--     , FilterContainer "40'HC" False
+--     , FilterContainer "20'DC" False
+--     , FilterContainer "40'RF" False
+--     ]
 
 
 searchSeaPortInit : SearchSeaPort.Model
@@ -73,17 +101,6 @@ initFilters =
     , FilterTab "Price range" False
     , FilterTab "Shipping Line" False
     , FilterTab "More Filters" False
-    ]
-
-
-initFilterContainer : List FilterContainer
-initFilterContainer =
-    [ FilterContainer "20'" False
-    , FilterContainer "20'RF" False
-    , FilterContainer "40'" False
-    , FilterContainer "40'HC" False
-    , FilterContainer "20'DC" False
-    , FilterContainer "40'RF" False
     ]
 
 
@@ -104,9 +121,13 @@ init =
     , tariffs = Success tariffs
     , errors = []
     , filterTabs = initFilters
-    , filterContainers = initFilterContainer
+    , filterContainers = Set.empty
     }
         ! []
+
+
+allContainers =
+    [ "20DRY", "20REEF", "40DRY", "40HC", "40REEF" ]
 
 
 
@@ -216,20 +237,13 @@ update msg model =
         ApplyFilterContainers bool ->
             model ! []
 
-        ToggleFilterContainer label ->
+        ToggleFilterContainer container ->
             let
                 filterContainers_ =
-                    List.map
-                        (\x ->
-                            if x.label == label then
-                                if x.active then
-                                    { x | active = False }
-                                else
-                                    { x | active = True }
-                            else
-                                x
-                        )
-                        model.filterContainers
+                    if (Set.member container model.filterContainers) then
+                        Set.remove container model.filterContainers
+                    else
+                        Set.insert container model.filterContainers
             in
                 { model | filterContainers = filterContainers_ } ! []
 
@@ -392,7 +406,7 @@ containersFilter : Model -> Html Msg
 containersFilter model =
     let
         containers =
-            List.indexedMap (,) model.filterContainers
+            List.indexedMap (,) allContainers
 
         displayStatus =
             if (List.any (\x -> (x.label == "Container Type") && (x.active == True)) model.filterTabs) then
@@ -445,36 +459,35 @@ containersFilter model =
                     [ Button.render Mdl
                         [ 1, 1, 0 ]
                         model.mdl
-                        [ Options.onClick (ApplyFilterContainers False)
-                        ]
-                        [ text "Cancel" ]
+                        []
+                        [ text "Reset" ]
                     ]
                 , li []
                     [ Button.render Mdl
                         [ 1, 1, 1 ]
                         model.mdl
-                        [ Options.onClick (ApplyFilterContainers True)
+                        [ Options.onClick (SelectFilterTab "Container Type")
                         , Button.colored
                         ]
-                        [ text "Apply" ]
+                        [ text "Close" ]
                     ]
                 ]
             ]
 
 
-toogleContainerFilter : Model -> ( Int, FilterContainer ) -> Html Msg
-toogleContainerFilter model ( int, filter ) =
+toogleContainerFilter : Model -> ( Int, String ) -> Html Msg
+toogleContainerFilter model ( int, label ) =
     li
-        [ onClick (ToggleFilterContainer filter.label) ]
+        [ onClick (ToggleFilterContainer label) ]
         [ Toggles.checkbox Mdl
             [ 1, int ]
             model.mdl
-            [ Options.onToggle (ToggleFilterContainer filter.label)
+            [ Options.onToggle (ToggleFilterContainer label)
             , Toggles.ripple
-            , Toggles.value filter.active
+            , Toggles.value (Set.member label model.filterContainers)
             , Options.css "cursor" "pointer"
             ]
-            [ text filter.label ]
+            [ text label ]
         ]
 
 
