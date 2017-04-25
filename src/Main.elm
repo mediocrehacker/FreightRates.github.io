@@ -23,6 +23,7 @@ import Material.Scheme as Scheme
 import Material.Toggles as Toggles
 import Material.Typography as Typo
 import Material.Tabs as Tabs
+import Material.Badge as Badge
 import RemoteData exposing (RemoteData(..))
 import RemoteData exposing (RemoteData(..), WebData)
 import SearchSeaPort exposing (..)
@@ -310,6 +311,16 @@ filtersMenu model =
 
 viewFilterMenuItems : Model -> List (Html Msg)
 viewFilterMenuItems model =
+    List.map (\x -> viewFilterMenuItem model x)
+        [ ( "Container Type", ContainerType )
+        , ( "Price range", PriceRange )
+        , ( "Shipping Line", ShippingLine )
+        , ( "More Filters", MoreFilters )
+        ]
+
+
+viewFilterMenuItem : Model -> ( String, TabFocused ) -> Html Msg
+viewFilterMenuItem model ( label, tab ) =
     let
         active_button_css status =
             if status then
@@ -322,30 +333,45 @@ viewFilterMenuItems model =
                 [ ( "transform", "rotate(180deg)" ) ]
             else
                 [ ( "transform", "rotate(0deg)" ) ]
+    in
+        li []
+            [ Button.render Mdl
+                [ 13 ]
+                model.mdl
+                [ Options.center
+                , Options.onClick (SelectFilterTab tab)
+                , active_button_css (model.currentTabFocus == tab)
+                ]
+                [ Options.span
+                    []
+                    [ text label ]
+                , viewContainerBadget model tab
+                , span
+                    [ style ([ ( "transition-duration", "250ms" ) ] ++ (active_icon_css (model.currentTabFocus == tab))) ]
+                    [ Icon.i "expand_more" ]
+                ]
+            ]
 
-        item ( label, tab ) =
-            li []
-                [ Button.render Mdl
-                    [ 13 ]
-                    model.mdl
-                    [ Options.center
-                    , Options.onClick (SelectFilterTab tab)
-                    , active_button_css (model.currentTabFocus == tab)
-                    ]
-                    [ span [ style [ ( "margin-right", "4px" ) ] ]
-                        [ text label ]
-                    , span
-                        [ style ([ ( "transition-duration", "250ms" ) ] ++ (active_icon_css (model.currentTabFocus == tab))) ]
-                        [ Icon.i "expand_more" ]
-                    ]
+
+viewContainerBadget : Model -> TabFocused -> Html Msg
+viewContainerBadget model tab =
+    let
+        badge =
+            if Set.isEmpty model.filterContainers then
+                []
+            else
+                [ Options.css "margin" "0 6px 0 24px"
+                , Badge.add (toString (Set.size model.filterContainers))
                 ]
     in
-        List.map (\x -> item x)
-            [ ( "Container Type", ContainerType )
-            , ( "Price range", PriceRange )
-            , ( "Shipping Line", ShippingLine )
-            , ( "More Filters", MoreFilters )
-            ]
+        case tab of
+            ContainerType ->
+                Options.span
+                    badge
+                    []
+
+            _ ->
+                span [ style [ ( "width", "5px" ) ] ] []
 
 
 filtersView : Model -> Html Msg
