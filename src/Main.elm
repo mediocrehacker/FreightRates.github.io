@@ -4,7 +4,7 @@ import Autocomplete
 import Html exposing (..)
 import Html.Attributes exposing (style, class, src)
 import Html.Events exposing (onClick)
-import Set
+import Set exposing (Set(..))
 import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
@@ -42,7 +42,7 @@ type alias Model =
     , tariffs : WebData (List Tariff)
     , errors : List String
     , currentTabFocus : TabFocused
-    , filterContainers : Set.Set String
+    , filterContainers : Set String
     }
 
 
@@ -262,6 +262,13 @@ viewBody model =
                         [ text "Raised button" ]
                     ]
                 ]
+            , Grid.cell
+                [ Grid.size Grid.All 12
+                , Options.cs "mdl-cell--hide-tablet"
+                ]
+                [ filtersMenu model
+                , filtersView model
+                ]
             ]
         , viewTariffs model
         ]
@@ -280,18 +287,68 @@ viewTariffs model =
             text ("Error: " ++ toString err)
 
         Success tariffs ->
-            Grid.grid
-                [ Grid.hide Grid.All ]
-                ([ Grid.cell
-                    [ Grid.size Grid.All 12
-                    , Options.cs "mdl-cell--hide-tablet"
-                    ]
-                    [ filtersMenu model
-                    , filtersView model
-                    ]
-                 ]
-                    ++ viewSuccessTariffs tariffs
-                )
+            filterByContainers (Set.toList model.filterContainers) tariffs
+                |> viewSuccessTariffs
+                |> Grid.grid
+                    [ Grid.hide Grid.All ]
+
+
+filterByContainers : List String -> List Tariff -> List Tariff
+filterByContainers containers tariffs =
+    case containers of
+        [] ->
+            tariffs
+
+        [ x ] ->
+            filterByContainer x tariffs
+
+        x :: xs ->
+            let
+                tariffs_ =
+                    filterByContainer x tariffs
+            in
+                tariffs_ ++ (filterByContainers xs tariffs)
+
+
+filterByContainer : String -> List Tariff -> List Tariff
+filterByContainer container tariffs =
+    let
+        f tariff =
+            case container of
+                "20DRY" ->
+                    if tariff.container == "20DRY" || tariff.container == "20'" || tariff.container == "20'DC" then
+                        True
+                    else
+                        False
+
+                "20REEF" ->
+                    if tariff.container == "20REEF" || tariff.container == "20'RF" then
+                        True
+                    else
+                        False
+
+                "40DRY" ->
+                    if tariff.container == "40DRY" || tariff.container == "40'" || tariff.container == "40'DC" then
+                        True
+                    else
+                        False
+
+                "40HC" ->
+                    if tariff.container == "40HC" || tariff.container == "40'HC" then
+                        True
+                    else
+                        False
+
+                "40REEF" ->
+                    if tariff.container == "40REEF" || tariff.container == "40'RF" then
+                        True
+                    else
+                        False
+
+                _ ->
+                    False
+    in
+        List.filter f tariffs
 
 
 filtersMenu : Model -> Html Msg
@@ -440,7 +497,7 @@ containersFilter model =
                         [ 1, 1, 0 ]
                         model.mdl
                         []
-                        [ text "Reset" ]
+                        [ text "Clear" ]
                     ]
                 , li []
                     [ Button.render Mdl
