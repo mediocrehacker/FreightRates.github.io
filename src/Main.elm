@@ -40,7 +40,7 @@ type alias Model =
     , currentFocus : Focused
     , tariffs : WebData (List Tariff)
     , errors : List String
-    , filterTabs : List FilterTab
+    , currentTabFocus : TabFocused
     , filterContainers : Set.Set String
     }
 
@@ -51,57 +51,17 @@ type Focused
     | None
 
 
-type alias FilterTab =
-    { label : String
-    , active : Bool
-    }
-
-
-
--- type alias FilterContainer =
---     { label : String
---     , active : Bool
---     }
--- type Container
---     = C20DRY
---     | C20REEF
---     | C40DRY
---     | C40HC
---     | C40REEF
--- allContainers : List ( Int, String, Container )
--- allContainers =
---     [ ( 0, "20DRY", C20DRY )
---     , ( 1, "20REEF", C20REEF )
---     , ( 2, "40DRY", C40DRY )
---     , ( 3, "40HC", C40HC )
---     , ( 4, "40REEF", C40REEF )
---     ]
--- allDictContainers : Dict String Container
--- allDictContainers =
---     Dict.fromList allContainers
--- initFilterContainer : List FilterContainer
--- initFilterContainer =
---     [ FilterContainer "20'" False
---     , FilterContainer "20'RF" False
---     , FilterContainer "40'" False
---     , FilterContainer "40'HC" False
---     , FilterContainer "20'DC" False
---     , FilterContainer "40'RF" False
---     ]
+type TabFocused
+    = ContainerType
+    | PriceRange
+    | ShippingLine
+    | MoreFilters
+    | NoFocus
 
 
 searchSeaPortInit : SearchSeaPort.Model
 searchSeaPortInit =
     SearchSeaPort.init
-
-
-initFilters : List FilterTab
-initFilters =
-    [ FilterTab "Container Type" False
-    , FilterTab "Price range" False
-    , FilterTab "Shipping Line" False
-    , FilterTab "More Filters" False
-    ]
 
 
 init : ( Model, Cmd Msg )
@@ -120,7 +80,7 @@ init =
     , currentFocus = None
     , tariffs = Success tariffs
     , errors = []
-    , filterTabs = initFilters
+    , currentTabFocus = NoFocus
     , filterContainers = Set.empty
     }
         ! []
@@ -141,9 +101,8 @@ type Msg
     | ChildMsg ChildPortalMsg
     | GetTariffs
     | NewResponse (WebData (List Tariff))
-    | SelectFilterTab String
+    | SelectFilterTab TabFocused
     | ToggleFilterContainer String
-    | ApplyFilterContainers Bool
     | NoOp
 
 
@@ -217,25 +176,15 @@ update msg model =
                 , Cmd.map (\b -> ChildMsg (SearchSeaPodMsg b)) cmd_
                 )
 
-        SelectFilterTab label ->
+        SelectFilterTab tab ->
             let
-                filterTabs_ =
-                    List.map
-                        (\x ->
-                            if x.label == label then
-                                if x.active then
-                                    { x | active = False }
-                                else
-                                    { x | active = True }
-                            else
-                                { x | active = False }
-                        )
-                        model.filterTabs
+                tab_ =
+                    if model.currentTabFocus == tab then
+                        NoFocus
+                    else
+                        tab
             in
-                { model | filterTabs = filterTabs_ } ! []
-
-        ApplyFilterContainers bool ->
-            model ! []
+                { model | currentTabFocus = tab_ } ! []
 
         ToggleFilterContainer container ->
             let
@@ -374,24 +323,29 @@ viewFilterMenuItems model =
             else
                 [ ( "transform", "rotate(0deg)" ) ]
 
-        item x =
+        item ( label, tab ) =
             li []
                 [ Button.render Mdl
                     [ 13 ]
                     model.mdl
                     [ Options.center
-                    , Options.onClick (SelectFilterTab x.label)
-                    , active_button_css x.active
+                    , Options.onClick (SelectFilterTab tab)
+                    , active_button_css (model.currentTabFocus == tab)
                     ]
                     [ span [ style [ ( "margin-right", "4px" ) ] ]
-                        [ text x.label ]
+                        [ text label ]
                     , span
-                        [ style ([ ( "transition-duration", "250ms" ) ] ++ (active_icon_css x.active)) ]
+                        [ style ([ ( "transition-duration", "250ms" ) ] ++ (active_icon_css (model.currentTabFocus == tab))) ]
                         [ Icon.i "expand_more" ]
                     ]
                 ]
     in
-        List.map (\x -> item x) model.filterTabs
+        List.map (\x -> item x)
+            [ ( "Container Type", ContainerType )
+            , ( "Price range", PriceRange )
+            , ( "Shipping Line", ShippingLine )
+            , ( "More Filters", MoreFilters )
+            ]
 
 
 filtersView : Model -> Html Msg
@@ -409,7 +363,7 @@ containersFilter model =
             List.indexedMap (,) allContainers
 
         displayStatus =
-            if (List.any (\x -> (x.label == "Container Type") && (x.active == True)) model.filterTabs) then
+            if model.currentTabFocus == ContainerType then
                 "block"
             else
                 "none"
@@ -466,7 +420,7 @@ containersFilter model =
                     [ Button.render Mdl
                         [ 1, 1, 1 ]
                         model.mdl
-                        [ Options.onClick (SelectFilterTab "Container Type")
+                        [ Options.onClick (SelectFilterTab NoFocus)
                         , Button.colored
                         ]
                         [ text "Close" ]
