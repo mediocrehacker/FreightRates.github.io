@@ -104,6 +104,7 @@ type Msg
     | NewResponse (WebData (List Tariff))
     | SelectFilterTab TabFocused
     | ToggleFilterContainer String
+    | ResetFilterContainer
     | NoOp
 
 
@@ -196,6 +197,9 @@ update msg model =
                         Set.insert container model.filterContainers
             in
                 { model | filterContainers = filterContainers_ } ! []
+
+        ResetFilterContainer ->
+            { model | filterContainers = Set.empty } ! []
 
         Mdl msg_ ->
             Material.update Mdl msg_ model
@@ -496,7 +500,7 @@ containersFilter model =
                     [ Button.render Mdl
                         [ 1, 1, 0 ]
                         model.mdl
-                        []
+                        [ Options.onClick ResetFilterContainer ]
                         [ text "Clear" ]
                     ]
                 , li []
@@ -506,7 +510,7 @@ containersFilter model =
                         [ Options.onClick (SelectFilterTab NoFocus)
                         , Button.colored
                         ]
-                        [ text "Close" ]
+                        [ text "Apply" ]
                     ]
                 ]
             ]
