@@ -271,7 +271,6 @@ viewBody model =
                 , Options.cs "mdl-cell--hide-tablet"
                 ]
                 [ filtersMenu model
-                , filtersView model
                 ]
             ]
         , viewTariffs model
@@ -411,6 +410,7 @@ viewFilterMenuItem model ( label, tab ) =
                     [ style ([ ( "transition-duration", "250ms" ) ] ++ (active_icon_css (model.currentTabFocus == tab))) ]
                     [ Icon.i "expand_more" ]
                 ]
+            , filtersView tab model
             ]
 
 
@@ -435,16 +435,63 @@ viewContainerBadget model tab =
                 span [ style [ ( "width", "5px" ) ] ] []
 
 
-filtersView : Model -> Html Msg
-filtersView model =
+filtersView : TabFocused -> Model -> Html Msg
+filtersView tab model =
     div [ style [ ( "position", "relative" ) ] ]
         [ div []
-            [ containersFilter model ]
+            [ tabsView tab model
+            ]
         ]
 
 
-containersFilter : Model -> Html Msg
-containersFilter model =
+tabsView : TabFocused -> Model -> Html Msg
+tabsView tab model =
+    case tab of
+        ContainerType ->
+            containersFilterView model
+
+        PriceRange ->
+            priceRangeView model
+
+        _ ->
+            p [] []
+
+
+priceRangeView : Model -> Html Msg
+priceRangeView model =
+    let
+        displayStatus =
+            if model.currentTabFocus == PriceRange then
+                "block"
+            else
+                "none"
+    in
+        div
+            [ style
+                [ ( "position", "absolute" )
+                , ( "top", "0px" )
+                , ( "left", "0px" )
+                , ( "z-index", "10" )
+                , ( "box-shadow", "rgba(0, 0, 0, 0.14902) 0px 14px 36px 2px" )
+                , ( "overflow-y", "auto" )
+                , ( "visibility", "visible" )
+                , ( "white-space", "normal" )
+                , ( "width", "250px" )
+                , ( "background", "rgb(255, 255, 255)" )
+                , ( "border-width", "1px" )
+                , ( "border-style", "solid" )
+                , ( "border-color", "rgba(0, 0, 0, 0.2)" )
+                , ( "border-image", "initial" )
+                , ( "border-radius", "4px" )
+                , ( "padding", "24px" )
+                , ( "display", displayStatus )
+                ]
+            ]
+            []
+
+
+containersFilterView : Model -> Html Msg
+containersFilterView model =
     let
         containers =
             List.indexedMap (,) allContainers
